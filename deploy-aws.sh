@@ -43,7 +43,7 @@ APP_DIR="/var/www/buildveritas-backend"
 sudo mkdir -p $APP_DIR
 sudo chown ec2-user:ec2-user $APP_DIR
 
-# Clone repository (you'll need to replace with your actual repo URL)
+# Clone repository from your GitHub
 cd /var/www
 if [ -d "buildveritas-backend" ]; then
     echo "📁 Updating existing repository..."
@@ -51,8 +51,7 @@ if [ -d "buildveritas-backend" ]; then
     git pull origin main
 else
     echo "📁 Cloning repository..."
-    # Replace with your actual GitHub repository URL
-    git clone https://github.com/yourusername/buildveritas-backend.git
+    git clone https://github.com/techsavvyanuj/BUILDVERIbackend.git buildveritas-backend
     cd buildveritas-backend
 fi
 
