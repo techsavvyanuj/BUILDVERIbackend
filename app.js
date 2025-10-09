@@ -22,8 +22,9 @@ const startServer = async () => {
         // Connect to database
         await config.database.connect();
         
-        // Enable CORS first, before any other middleware
-        app.use(config.cors);
+    // Enable CORS first, before any other middleware
+    app.use(config.cors);
+    app.options('*', config.cors);
         
         // Initialize basic middleware
         app.use(express.json());
