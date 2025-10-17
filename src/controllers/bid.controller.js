@@ -1,6 +1,7 @@
 const bidService = require('../services/bid.service');
 const { ApiError } = require('../utils/apiError');
 const { ApiResponse } = require('../utils/apiResponse');
+const logger = require('../utils/logger');
 
 class BidController {
 
@@ -9,21 +10,12 @@ class BidController {
      */
     async submitBid(req, res, next) {
         try {
-            const vendorId = req.user.id; // Changed from _id to id to match JWT token
+            const vendorId = req.user.id;
             const { projectId } = req.params;
-            console.log('Submitting bid with:', {
-                vendorId,
-                projectId,
-                user: req.user
-            });
             
             const bid = await bidService.submitBid(projectId, vendorId, req.body);
             
-            res.status(201).json(new ApiResponse(
-                201,
-                'Bid submitted successfully',
-                bid
-            ));
+            return ApiResponse.created(res, bid, 'Bid submitted successfully');
         } catch (error) {
             next(error);
         }
@@ -34,16 +26,12 @@ class BidController {
      */
     async updateBid(req, res, next) {
         try {
-            const vendorId = req.user.id; // JWT token has 'id', not '_id'
+            const vendorId = req.user.id;
             const { bidId } = req.params;
             
             const bid = await bidService.updateBid(bidId, vendorId, req.body);
             
-            res.status(200).json(new ApiResponse(
-                200,
-                'Bid updated successfully',
-                bid
-            ));
+            return ApiResponse.success(res, bid, 'Bid updated successfully');
         } catch (error) {
             next(error);
         }
@@ -97,26 +85,22 @@ class BidController {
     async getProjectBids(req, res, next) {
         try {
             const { projectId } = req.params;
-            const { status } = req.query;
+            const { status, page = 1, limit = 20 } = req.query;
             
-            console.log('Getting bids for project:', projectId, 'with status:', status);
+            const result = await bidService.getProjectBids(projectId, status, {
+                page: parseInt(page),
+                limit: parseInt(limit)
+            });
             
-            const bids = await bidService.getProjectBids(projectId, status);
-            console.log('Controller received bids:', bids);
-            
-            // Format response
-            // Use ApiResponse.success static method
             return ApiResponse.success(
                 res,
                 {
-                    bids: bids || [],
-                    total: bids ? bids.length : 0,
+                    ...result,
                     projectId
                 },
                 'Project bids retrieved successfully'
             );
         } catch (error) {
-            console.error('Error in getProjectBids:', error);
             next(error);
         }
     }
@@ -129,15 +113,9 @@ class BidController {
             const { projectIds, status } = req.body;
             
             if (!projectIds || !Array.isArray(projectIds)) {
-                return res.status(400).json({
-                    status: 'error',
-                    message: 'Project IDs array is required'
-                });
+                throw new ApiError(400, 'Project IDs array is required');
             }
             
-            console.log('Getting bids for projects:', projectIds.length);
-            
-            // Use the new service method
             const result = await bidService.getMultipleProjectBids(projectIds, status);
             
             return ApiResponse.success(
@@ -146,7 +124,6 @@ class BidController {
                 'Multiple project bids retrieved successfully'
             );
         } catch (error) {
-            console.error('Error in getMultipleProjectBids:', error);
             next(error);
         }
     }
@@ -156,16 +133,8 @@ class BidController {
      */
     async getVendorBids(req, res, next) {
         try {
-            const vendorId = req.user.id; // JWT token has 'id', not '_id'
+            const vendorId = req.user.id;
             const { status, page = 1, limit = 10 } = req.query;
-            
-            console.log('getVendorBids controller called with:', {
-                vendorId,
-                status,
-                page,
-                limit,
-                user: req.user
-            });
             
             const bids = await bidService.getVendorBids(
                 vendorId,
@@ -173,18 +142,8 @@ class BidController {
                 { page: parseInt(page), limit: parseInt(limit) }
             );
             
-            console.log('getVendorBids controller returning:', {
-                bidsCount: bids.bids?.length || 0,
-                total: bids.pagination?.total || 0
-            });
-            
-            res.status(200).json({
-                status: 'success',
-                message: 'Vendor bids retrieved successfully',
-                data: bids
-            });
+            return ApiResponse.success(res, bids, 'Vendor bids retrieved successfully');
         } catch (error) {
-            console.error('getVendorBids controller error:', error);
             next(error);
         }
     }
@@ -203,11 +162,7 @@ class BidController {
                 initiatorType
             );
             
-            res.status(200).json(new ApiResponse(
-                200,
-                'Negotiation added successfully',
-                result
-            ));
+            return ApiResponse.success(res, result, 'Negotiation added successfully');
         } catch (error) {
             next(error);
         }
@@ -218,19 +173,17 @@ class BidController {
      */
     async rejectBid(req, res, next) {
         try {
-            const clientId = req.user.id; // Using id from JWT token
+            const clientId = req.user.id;
             const { bidId, projectId } = req.params;
             const { reason } = req.body;
             
-            console.log('Rejecting bid with:', { clientId, bidId, projectId, reason });
-            
             const result = await bidService.rejectBid(bidId, projectId, clientId, reason);
             
-            res.status(200).json(new ApiResponse(
-                200,
-                result.message || 'Bid rejected successfully',
-                result.bid
-            ));
+            return ApiResponse.success(
+                res,
+                result.bid,
+                result.message || 'Bid rejected successfully'
+            );
         } catch (error) {
             next(error);
         }
@@ -241,23 +194,17 @@ class BidController {
      */
     async getBidDetails(req, res, next) {
         try {
-            const clientId = req.user.id; // Using id from JWT token
+            const clientId = req.user.id;
             const { bidId } = req.params;
-            
-            console.log('Getting bid details with:', { clientId, bidId });
             
             const bid = await bidService.getBidDetails(bidId, clientId);
             
-            console.log('Bid details from service:', bid);
-            
-            // Use the static method instead of constructor
             return ApiResponse.success(
                 res,
                 bid,
                 'Bid details retrieved successfully'
             );
         } catch (error) {
-            console.error('Error in getBidDetails controller:', error);
             next(error);
         }
     }
@@ -271,11 +218,11 @@ class BidController {
             
             const analysis = await bidService.getCompetitiveAnalysis(bidId);
             
-            res.status(200).json(new ApiResponse(
-                200,
-                'Competitive analysis retrieved successfully',
-                analysis
-            ));
+            return ApiResponse.success(
+                res,
+                analysis,
+                'Competitive analysis retrieved successfully'
+            );
         } catch (error) {
             next(error);
         }
@@ -286,20 +233,13 @@ class BidController {
      */
     async deleteBid(req, res, next) {
         try {
-            const vendorId = req.user.id; // JWT token has 'id', not '_id'
+            const vendorId = req.user.id;
             const { bidId } = req.params;
-            
-            console.log('Deleting bid with:', { bidId, vendorId });
             
             const result = await bidService.deleteBid(bidId, vendorId);
             
-            res.status(200).json(new ApiResponse(
-                200,
-                'Bid deleted successfully',
-                result
-            ));
+            return ApiResponse.success(res, result, 'Bid deleted successfully');
         } catch (error) {
-            console.error('Error in deleteBid controller:', error);
             next(error);
         }
     }
