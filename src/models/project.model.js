@@ -313,7 +313,7 @@ projectSchema.pre('save', function(next) {
 
 // Methods
 projectSchema.methods.updateStatus = async function(newStatus, reason) {
-    if (!this.status.current === newStatus) {
+    if (this.status.current !== newStatus) {
         this.status.current = newStatus;
         this.status.history.push({
             status: newStatus,

@@ -7,7 +7,12 @@ const bidTimelineSchema = new mongoose.Schema({
         required: [true, 'Proposed start date is required'],
         validate: {
             validator: function(value) {
-                return value >= new Date();
+                // Only validate on creation or when date is being modified
+                // This prevents validation failure when updating other fields after start date has passed
+                if (this.isNew || this.isModified('timeline.proposedStartDate')) {
+                    return value >= new Date();
+                }
+                return true;
             },
             message: 'Start date cannot be in the past'
         }
@@ -231,6 +236,9 @@ bidSchema.index({ project: 1, vendor: 1 }, { unique: true });
 bidSchema.index({ 'status.current': 1 });
 bidSchema.index({ 'proposedCost.total': 1 });
 bidSchema.index({ 'metadata.submittedAt': -1 });
+// Compound indexes for performance optimization
+bidSchema.index({ vendor: 1, 'status.current': 1 }); // Optimize getVendorBids queries
+bidSchema.index({ project: 1, 'status.current': 1, 'metadata.submittedAt': -1 }); // Optimize getProjectBids queries
 
 // Middleware
 bidSchema.pre('save', function(next) {
